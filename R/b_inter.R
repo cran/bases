@@ -22,24 +22,39 @@
 #' lm(mpg ~ b_inter(cyl, hp, wt), mtcars)
 #'
 #' # how number of features depends on interaction depth
-#' for (d in 2:6) {
+#' for (d in 1:6) {
 #'     X = with(mtcars, b_inter(cyl, disp, hp, drat, wt, depth=d))
 #'     print(ncol(X))
 #' }
 #'
 #' @export
-b_inter <- function(..., depth = 2, stdize = c("symbox", "box", "scale", "none"),
-                    shift = NULL, scale = NULL) {
-    if (depth <= 1) abort("`depth` must be at least 2")
+b_inter <- function(
+    ...,
+    depth = 2,
+    stdize = c("symbox", "box", "scale", "none"),
+    shift = NULL,
+    scale = NULL
+) {
+    if (depth <= 0) {
+        abort("`depth` must be positive")
+    }
 
     ee = substitute(list(...))
     x = as.matrix(cbind(...))
-    colnames(x) = vapply(ee[-1], deparse, "")
+    # Only set column names from expression if multiple arguments were provided
+    # ee contains: list() call + arguments, so length > 2 means more than one argument
+    if (length(ee) > 2) {
+        colnames(x) = vapply(ee[-1], deparse, "")
+    }
+    # If single df/matrix provided, keep existing column names or generate default ones
     std = do_std(x, stdize, shift, scale)
     data = as.data.frame(std$x)
 
-    if (depth )
-    form = as.formula(paste0("~ 0 + .^", depth))
+    if (depth >= 2) {
+        form = as.formula(paste0("~ 0 + .^", depth))
+    } else {
+        form = as.formula("~ 0 + .")
+    }
     m = model.matrix(form, data)
 
     attr(m, "shift") = std$shift
@@ -52,7 +67,7 @@ b_inter <- function(..., depth = 2, stdize = c("symbox", "box", "scale", "none")
 
 
 #' @export
-predict.b_inter <- function (object, newdata, ...)  {
+predict.b_inter <- function(object, newdata, ...) {
     if (missing(newdata)) {
         return(object)
     }
@@ -61,9 +76,11 @@ predict.b_inter <- function (object, newdata, ...)  {
 
 #' @export
 makepredictcall.b_inter <- function(var, call) {
-    if (as.character(call)[1L] == "b_inter" ||
-        (is.call(call) && identical(eval(call[[1L]]), b_inter))) {
-        at = attributes(var)[c("shift",  "scale")]
+    if (
+        as.character(call)[1L] == "b_inter" ||
+            (is.call(call) && identical(eval(call[[1L]]), b_inter))
+    ) {
+        at = attributes(var)[c("shift", "scale")]
         call[names(at)] = at
     }
     call

@@ -6,25 +6,41 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/CoryMcCartan/bases/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/CoryMcCartan/bases/actions/workflows/R-CMD-check.yaml)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/bases)](https://CRAN.R-project.org/package=bases)
 <!-- badges: end -->
 
 **bases** provides various basis expansions for flexible regression
-modeling, including random Fourier features (`?b_rff`), exact kernel /
-Gaussian process feature maps (`?b_ker`), Bayesian Additive Regression
-Trees prior features (`?b_bart`), and a helpful interface for n-way
-interactions (`?b_inter`). The provided functions may be used within any
-modeling formula, allowing the use of kernel methods and other basis
-expansions in modeling functions that do not otherwise support them.
+modeling, including:
+
+- random Fourier features (`?b_rff`)
+- exact kernel / Gaussian process feature maps (`?b_ker`)
+- Bayesian additive regression trees (BART) prior features (`?b_bart`)
+- neural network features (`?b_nn`)
+- graph Fourier features (`?b_gff`)
+- random convolutional image features (`?b_conv`)
+- a helpful interface for n-way interactions (`?b_inter`)
+
+The provided functions may be used within any modeling formula, allowing
+the use of kernel methods and other basis expansions in modeling
+functions that do not otherwise support them.
 
 Along with the basis expansions, a number of kernel functions
 (`?kernels`) are also provided, which support kernel arithmetic to form
 new kernels. Basic ridge regression functionality (`?ridge`) is included
 as well.
 
-Finally, the package provides a
-[recipes](https://recipes.tidymodels.org/)-friendly interface, so that
-these basis expansions can be combined with other transformations and
-used within the [tidymodels](https://www.tidymodels.org/) framework.
+Finally, the package provides two ways of interfacing with more complex
+modeling workflows:
+
+1.  Integration with `mgcv`, so that basis expansions can be used as
+    smooth terms within `s()`. This enables fitting different levels of
+    penalization to different basis expansions.
+
+2.  A [recipes](https://recipes.tidymodels.org/)-friendly interface, so
+    that these basis expansions can be combined with other
+    transformations and used within the
+    [tidymodels](https://www.tidymodels.org/) framework.
 
 ## Installation
 
@@ -57,7 +73,7 @@ library(bases)
 
 # Box & Jenkins (1976) sales data
 x = 1:150
-y = as.numeric(BJsales) 
+y = as.numeric(BJsales)
 
 lm(y ~ b_rff(x, p = 5)) # 5 random features
 #> 

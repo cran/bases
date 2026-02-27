@@ -24,6 +24,9 @@
 #' @param drop Columns in the calculated indicator matrix to drop. By default,
 #'   any leaves which match zero input rows are dropped.  If provided, overrides
 #'   this default.
+#' @param min_drop Controls the default dropping of columns. Leaves which match
+#'   `min_drop` or fewer input rows are dropped. Defaults to 0, so only empty
+#'    leaves are dropped.
 #' @param ranges The range of the input features, provided as a matrix with two
 #'   rows and a column for each input feature. The first row is the minimum and
 #'   the second row is the maximum.
@@ -48,31 +51,53 @@
 #' lines(x, fitted(m), type="s", col="blue")
 #'
 #' @export
-b_bart <- function(..., trees = 100, depths = bart_depth_prior()(trees),
-                   vars = NULL, thresh = NULL, drop = NULL, ranges = NULL) {
+b_bart <- function(
+    ...,
+    trees = 100,
+    depths = bart_depth_prior()(trees),
+    vars = NULL,
+    thresh = NULL,
+    drop = NULL,
+    min_drop = 0L,
+    ranges = NULL
+) {
     x = as.matrix(cbind(...))
     storage.mode(x) = "double"
-    if (is.null(ranges)) ranges = apply(x, 2, range)
-    if (ncol(ranges) != ncol(x) || nrow(ranges) != 2)
+    if (is.null(ranges)) {
+        ranges = apply(x, 2, range)
+    }
+    if (ncol(ranges) != ncol(x) || nrow(ranges) != 2) {
         abort("`ranges` must have two rows and a column for each input variable")
+    }
 
-    if (length(depths) != trees) abort("`depths` must have length `trees`")
+    if (length(depths) != trees) {
+        abort("`depths` must have length `trees`")
+    }
     k = sum(depths)
     if (is.null(vars)) {
-        vars = sample(ncol(x), k, replace=TRUE)
+        vars = sample(ncol(x), k, replace = TRUE)
     }
     if (is.null(thresh)) {
         thresh = runif(k, ranges[1, vars], ranges[2, vars])
     }
-    if (k != length(vars)) abort("`depths` is inconsistent with `vars`")
-    if (length(thresh) != length(vars)) abort("`thresh` and `vars` must have the same length")
+    if (k != length(vars)) {
+        abort("`depths` is inconsistent with `vars`")
+    }
+    if (length(thresh) != length(vars)) {
+        abort("`thresh` and `vars` must have the same length")
+    }
 
     m = forest_mat(x, as.integer(depths), vars, thresh)
     if (is.null(drop)) {
+        if (!is.numeric(min_drop) || length(min_drop) != 1 || min_drop < 0) {
+            abort("`min_drop` must be a single non-negative integer")
+        }
         tot = colSums(m)
-        drop = which(tot == 0 | tot == nrow(x))
+        drop = which(tot <= min_drop | tot >= nrow(x) - min_drop)
     }
-    if (length(drop) > 0) m = m[, -drop]
+    if (length(drop) > 0) {
+        m = m[, -drop]
+    }
 
     attr(m, "depths") = depths
     attr(m, "vars") = vars
@@ -101,7 +126,7 @@ bart_depth_prior <- function(mean_depth = 1.25) {
 }
 
 #' @export
-predict.b_bart <- function (object, newdata, ...)  {
+predict.b_bart <- function(object, newdata, ...) {
     if (missing(newdata)) {
         return(object)
     }
@@ -110,8 +135,10 @@ predict.b_bart <- function (object, newdata, ...)  {
 
 #' @export
 makepredictcall.b_bart <- function(var, call) {
-    if (as.character(call)[1L] == "b_bart" ||
-        (is.call(call) && identical(eval(call[[1L]]), b_bart))) {
+    if (
+        as.character(call)[1L] == "b_bart" ||
+            (is.call(call) && identical(eval(call[[1L]]), b_bart))
+    ) {
         at = attributes(var)[c("depths", "vars", "thresh", "drop", "ranges")]
         call[names(at)] = at
     }
